@@ -1,0 +1,15 @@
+.git
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/*.db-*
+**/*.tsbuildinfo
+.venv
+.env
+.env.*
+rehearsal-credentials.txt
+frontend/dist
+backups
+frontend/test-results
+frontend/playwright-report

@@ -1,0 +1,26 @@
+services:
+  app:
+    restart: unless-stopped
+    environment:
+      COOKIE_SECURE: 'true'
+      ALLOWED_ORIGINS: https://${FGL_DOMAIN:?Set FGL_DOMAIN in .env}
+  db:
+    restart: unless-stopped
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      FGL_DOMAIN: ${FGL_DOMAIN:?Set FGL_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  caddy_data:
+  caddy_config:

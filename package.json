@@ -1,0 +1,1 @@
+{"name":"freshers-got-latent","private":true,"scripts":{"dev":"npm --prefix web run dev","build":"npm --prefix web run build","test":"npm --prefix web test","legacy:dev":"node frontend/scripts/dev.mjs"}}

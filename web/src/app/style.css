@@ -1,0 +1,365 @@
+:root {
+  --bg: #101514;
+  --panel: #19211f;
+  --line: #35413d;
+  --ink: #f3f5ed;
+  --muted: #b0bdb5;
+  --accent: #d5f56a;
+  --teal: #69d7bd;
+  --danger: #ffb1a7;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+header {
+  border-bottom: 1px solid var(--line);
+  padding: 22px 5vw;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+.brand {
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 22px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand span {
+  display: block;
+  font-size: 10px;
+  color: var(--teal);
+  letter-spacing: 0.2em;
+}
+.edition {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.edition b {
+  padding: 6px;
+  background: var(--accent);
+  color: var(--bg);
+  margin-left: 12px;
+}
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 40px 5vw;
+  min-height: 75vh;
+}
+h1,
+h2,
+h3 {
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+h1 {
+  font-size: clamp(40px, 6vw, 80px);
+  margin: 12px 0 24px;
+  max-width: 900px;
+  text-transform: uppercase;
+}
+h2 {
+  font-size: 30px;
+  margin: 8px 0 20px;
+}
+h3 {
+  font-size: 22px;
+}
+p {
+  max-width: 65ch;
+}
+.eyebrow {
+  font-family: monospace;
+  color: var(--teal);
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.muted,
+small {
+  color: var(--muted);
+}
+.hero {
+  padding: 40px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 32px;
+}
+.hero p {
+  font-size: 20px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
+.card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  margin-bottom: 20px;
+}
+.stat {
+  font-size: 44px;
+  display: block;
+  color: var(--accent);
+  font-weight: 800;
+}
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.spread {
+  justify-content: space-between;
+}
+.button,
+button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  min-height: 46px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.secondary {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+}
+a {
+  color: var(--teal);
+}
+label {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 14px 0 5px;
+}
+input,
+select,
+textarea {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 12px;
+  width: 100%;
+  font: inherit;
+}
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+textarea {
+  min-height: 90px;
+}
+nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+}
+nav button {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--line);
+  font-size: 13px;
+}
+nav button[aria-current="true"] {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.notice {
+  border-left: 4px solid var(--teal);
+  padding: 14px 18px;
+  background: #21352d;
+  margin: 18px 0;
+  overflow-wrap: anywhere;
+}
+.error {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: #30211f;
+}
+.badge {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  font: 12px monospace;
+  display: inline-block;
+  color: var(--teal);
+}
+.pass {
+  max-width: 440px;
+  margin: auto;
+  text-align: center;
+}
+.pass img {
+  display: block;
+  margin: 20px auto;
+  width: min(100%, 300px);
+  height: auto;
+}
+.pass strong {
+  display: block;
+  font-size: 25px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+td,
+th {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+details {
+  border-top: 1px solid var(--line);
+  padding: 18px 0;
+}
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+video {
+  width: 100%;
+  max-height: 420px;
+  background: #000;
+}
+.danger {
+  border-color: var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+footer {
+  padding: 30px 5vw;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--muted);
+}
+:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+.receipt {
+  font-family: monospace;
+  word-break: break-word;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  header {
+    padding: 18px 5vw;
+  }
+  .edition {
+    max-width: 130px;
+    font-size: 10px;
+  }
+  .edition b {
+    display: inline-block;
+    margin: 3px 0;
+  }
+  main {
+    padding-top: 24px;
+  }
+  .card {
+    padding: 18px;
+  }
+  button,
+  .button {
+    padding: 10px 14px;
+  }
+  .hero {
+    padding: 15px 0 30px;
+  }
+  h1 {
+    font-size: 48px;
+  }
+}
+@media print {
+  header,
+  footer,
+  nav,
+  button {
+    display: none;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  .card {
+    background: white;
+    border-color: #bbb;
+  }
+  main {
+    max-width: none;
+  }
+  h1 {
+    font-size: 32px;
+  }
+}
+@font-face {
+  font-family: Barlow;
+  src: url("/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 700;
+}
+@font-face {
+  font-family: SourceSans;
+  src: url("/fonts/source-sans-3-latin-400-normal.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+}
+body {
+  font-family: SourceSans, Arial, sans-serif;
+  font-size: 17px;
+}
+h1,
+h2,
+h3 {
+  font-family: Barlow, Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.badge {
+  font-size: 14px;
+}
+.brand span,
+.edition {
+  font-size: 12px;
+}
+main:has(form) h1 {
+  font-size: clamp(36px, 5vw, 56px);
+}

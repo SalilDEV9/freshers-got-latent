@@ -18,7 +18,7 @@ test('audience, independent judges, reveal and result report',async({browser,pag
    const widths=await page.evaluate(()=>({width:innerWidth,body:document.documentElement.scrollWidth}));
    expect(widths.body).toBeLessThanOrEqual(widths.width+1);expect(errors).toEqual([]);return;
  }
- await expect(page.getByText('Scores are sealed',{exact:true})).toBeVisible();
+await expect(page.locator('.sealed')).toContainText('Scores are sealed');
  for(const username of ['judge1','judge2']){
    const context=await browser.newContext();const judge=await context.newPage();judge.on('dialog',d=>d.accept());
    await signIn(judge,username);await judge.getByLabel('Your score',{exact:true}).fill('8');

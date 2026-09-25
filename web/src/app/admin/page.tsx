@@ -6,6 +6,7 @@ import { detectMapping, fields } from "@/lib/imports.mjs";
 import { Login, Logout } from "@/components/Common";
 export default function Admin() {
   const [overview, setOverview] = useState<any>(null),
+    [feedbackData, setFeedbackData] = useState<any>(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
@@ -16,7 +17,13 @@ export default function Admin() {
     [rows, setRows] = useState<number[]>([]),
     [reason, setReason] = useState("");
   async function reload() {
-    setOverview(await action("overview"));
+    const [overviewResult, feedbackResult] = await Promise.all([
+      action("overview"),
+      action("feedback_admin"),
+    ]);
+
+    setOverview(overviewResult);
+    setFeedbackData(feedbackResult);
   }
   useEffect(() => {
     reload().catch((e) => setError(e.message));
@@ -60,6 +67,13 @@ export default function Admin() {
     });
   }
   const registrations = overview?.registrations || [];
+  const feedback = feedbackData?.feedback || [];
+  const feedbackSummary = feedbackData?.summary || {
+    total: 0,
+    average_rating: 0,
+    anonymous_count: 0,
+  };
+
   return (
     <main>
       <StaffUpdates eventId={overview?.event_id} onUpdate={reload} />
@@ -109,6 +123,96 @@ export default function Admin() {
               </section>
             ))}
           </div>
+
+          <section className="card">
+            <h2>Audience feedback</h2>
+
+            <div className="grid">
+              {[
+                ["Responses", feedbackSummary.total],
+                [
+                  "Average rating",
+                  feedbackSummary.total
+                    ? `${Number(feedbackSummary.average_rating).toFixed(2)} / 5`
+                    : "—",
+                ],
+                ["Anonymous", feedbackSummary.anonymous_count],
+              ].map(([label, value]) => (
+                <section className="card" key={String(label)}>
+                  <div className="eyebrow">{label}</div>
+                  <strong className="stat">{value}</strong>
+                </section>
+              ))}
+            </div>
+
+            {!feedback.length ? (
+              <p>No audience feedback has been submitted yet.</p>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rating</th>
+                      <th>Attendee</th>
+                      <th>Liked most</th>
+                      <th>Can improve</th>
+                      <th>Additional comments</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {feedback.map((f: any, index: number) => (
+                      <tr key={`${f.updated_at || f.created_at}-${index}`}>
+                        <td>
+                          <strong>{f.rating} / 5</strong>
+                        </td>
+
+                        <td>
+                          {f.anonymous ? (
+                            <>
+                              <strong>Anonymous</strong>
+                              <br />
+                              <small>Identity hidden</small>
+                            </>
+                          ) : (
+                            <>
+                              {f.name}
+                              <br />
+                              <small>
+                                {f.email}
+                                <br />
+                                {f.roll_number}
+                              </small>
+                            </>
+                          )}
+                        </td>
+
+                        <td>{f.liked || "—"}</td>
+                        <td>{f.improvement || "—"}</td>
+                        <td>{f.comment || "—"}</td>
+
+                        <td>
+                          {new Date(
+                            f.updated_at || f.created_at,
+                          ).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() => run(reload)}
+            >
+              Refresh feedback
+            </button>
+          </section>
+
           <section className="card">
             <h2>Import registrations</h2>
             <p>

@@ -134,6 +134,60 @@ export async function handle(action: string, data: any, a: Actor) {
         : "",
     };
   }
+
+  if (action === "feedback_get") {
+    const r = await own(sql, e, a);
+
+    const [feedback] = await sql`
+      select rating, liked, improvement, comment, anonymous, created_at, updated_at
+      from fgl.audience_feedback
+      where event_id=${e} and attendee_id=${r.id}
+    `;
+
+    return { feedback: feedback || null };
+  }
+
+  if (action === "feedback_admin") {
+    await staff(sql, e, a, admins);
+
+    const [summary] = await sql`
+      select
+        count(*)::int as total,
+        coalesce(avg(rating), 0)::numeric(4,2) as average_rating,
+        count(*) filter (where anonymous)::int as anonymous_count
+      from fgl.audience_feedback
+      where event_id=${e}
+    `;
+
+    const feedback = await sql`
+      select
+        f.rating,
+        f.liked,
+        f.improvement,
+        f.comment,
+        f.anonymous,
+        f.created_at,
+        f.updated_at,
+        case when f.anonymous then null else r.name end as name,
+        case when f.anonymous then null else r.email end as email,
+        case when f.anonymous then null else r.roll_number end as roll_number
+      from fgl.audience_feedback f
+      join fgl.audience_registrations r
+        on r.event_id=f.event_id and r.id=f.attendee_id
+      where f.event_id=${e}
+      order by f.updated_at desc
+      limit 1000
+    `;
+
+    return {
+      summary: {
+        total: summary?.total || 0,
+        average_rating: Number(summary?.average_rating || 0),
+        anonymous_count: summary?.anonymous_count || 0,
+      },
+      feedback,
+    };
+  }
   return await sql.begin(async (tx: SQL) => {
     const [event] = await tx`select * from fgl.events where id=${e} for update`;
     if (!event) throw new Error("Event not configured");
@@ -197,6 +251,58 @@ export async function handle(action: string, data: any, a: Actor) {
           throw new Error("Ratings must be 1–5");
       await tx`insert into fgl.audience_votes(event_id,performance_id,audience_id,creativity,entertainment,originality) values(${e},${p.id},${r.id},${data.creativity},${data.entertainment},${data.originality})`;
       await audit(tx, e, a, p.id, "VOTE_SUBMITTED");
+      return { ok: true };
+    }
+
+    if (action === "feedback_submit") {
+      const r = await own(tx, e, a);
+
+      if (!["PASS_ISSUED", "CHECKED_IN"].includes(r.status))
+        throw new Error("Approved registration required");
+
+      if (!Number.isInteger(data.rating) || data.rating < 1 || data.rating > 5)
+        throw new Error("Rating must be between 1 and 5");
+
+      const liked = String(data.liked || "").trim();
+      const improvement = String(data.improvement || "").trim();
+      const comment = String(data.comment || "").trim();
+
+      if (liked.length > 1000)
+        throw new Error("Liked response is too long");
+
+      if (improvement.length > 1000)
+        throw new Error("Improvement response is too long");
+
+      if (comment.length > 1500)
+        throw new Error("Comment is too long");
+
+      await tx`
+        insert into fgl.audience_feedback
+          (event_id, attendee_id, rating, liked, improvement, comment, anonymous)
+        values
+          (${e}, ${r.id}, ${data.rating}, ${liked}, ${improvement}, ${comment}, ${data.anonymous === true})
+        on conflict (event_id, attendee_id)
+        do update set
+          rating = excluded.rating,
+          liked = excluded.liked,
+          improvement = excluded.improvement,
+          comment = excluded.comment,
+          anonymous = excluded.anonymous,
+          updated_at = now()
+      `;
+
+      await audit(
+        tx,
+        e,
+        a,
+        r.id,
+        "FEEDBACK_SUBMITTED",
+        {
+          rating: data.rating,
+          anonymous: data.anonymous === true,
+        },
+      );
+
       return { ok: true };
     }
     if (["scan", "redeem", "override"].includes(action)) {

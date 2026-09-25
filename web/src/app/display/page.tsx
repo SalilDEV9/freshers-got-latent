@@ -8,16 +8,20 @@ type LiveData = {
     title?: string;
     phase?: string;
     announcement?: string;
+    voting_open?: boolean;
   };
   performances?: any[];
   results?: any[];
   audience?: any[];
 };
 
+const activeStates = ["ON_STAGE", "PERFORMING", "JUDGING", "REVEAL"];
+
 export default function DisplayPage() {
   const [live, setLive] = useState<LiveData | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [lineupPage, setLineupPage] = useState(0);
 
   useEffect(() => {
     let stopped = false;
@@ -59,9 +63,14 @@ export default function DisplayPage() {
   }, []);
 
   useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 250);
+      setLineupPage((page) => page + 1);
+    }, 6500);
 
     return () => clearInterval(timer);
   }, []);
@@ -72,13 +81,28 @@ export default function DisplayPage() {
   const active = useMemo(
     () =>
       performances.find((p: any) =>
-        ["ON_STAGE", "PERFORMING", "JUDGING", "REVEAL"].includes(p.state),
+        activeStates.includes(p.state),
       ),
     [performances],
   );
 
-  const next = useMemo(
-    () => performances.find((p: any) => p.state === "READY"),
+  const ready = useMemo(
+    () =>
+      performances
+        .filter((p: any) => p.state === "READY")
+        .sort((a: any, b: any) => a.position - b.position),
+    [performances],
+  );
+
+  const upcoming = useMemo(
+    () =>
+      performances
+        .filter((p: any) =>
+          ["REGISTERED", "CHECKED_IN", "BACKSTAGE", "READY"].includes(
+            p.state,
+          ),
+        )
+        .sort((a: any, b: any) => a.position - b.position),
     [performances],
   );
 
@@ -86,12 +110,23 @@ export default function DisplayPage() {
     ? results.find((r: any) => r.id === active.id)
     : null;
 
+  const completedCount = performances.filter((p: any) =>
+    ["COMPLETED", "VOID"].includes(p.state),
+  ).length;
+
+  const totalCount = performances.length || 1;
+
+  const activeIndex = active?.position || ready[0]?.position || 1;
+
   function remainingSeconds() {
     if (!active?.timer_end) return null;
 
-    const end = new Date(active.timer_end).getTime();
-
-    return Math.max(0, Math.ceil((end - now) / 1000));
+    return Math.max(
+      0,
+      Math.ceil(
+        (new Date(active.timer_end).getTime() - now) / 1000,
+      ),
+    );
   }
 
   function clock(seconds: number | null) {
@@ -105,12 +140,106 @@ export default function DisplayPage() {
 
   const seconds = remainingSeconds();
 
+  const lineupChunks = useMemo(() => {
+    const size = 5;
+    const chunks = [];
+
+    for (let i = 0; i < performances.length; i += size) {
+      chunks.push(performances.slice(i, i + size));
+    }
+
+    return chunks;
+  }, [performances]);
+
+  const currentLineup =
+    lineupChunks.length > 0
+      ? lineupChunks[lineupPage % lineupChunks.length]
+      : [];
+
+  function Progress() {
+    const percentage = Math.min(
+      100,
+      Math.max(0, (completedCount / totalCount) * 100),
+    );
+
+    return (
+      <div className={styles.progressBlock}>
+        <div className={styles.progressTop}>
+          <span>
+            ACT {Math.min(activeIndex, totalCount)} OF {totalCount}
+          </span>
+          <span>{completedCount} COMPLETED</span>
+        </div>
+
+        <div className={styles.progressTrack}>
+          <div
+            className={styles.progressFill}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function Upcoming() {
+    const list = upcoming
+      .filter((p: any) => p.id !== active?.id)
+      .slice(0, 3);
+
+    if (!list.length) return null;
+
+    return (
+      <div className={styles.upcoming}>
+        <div className={styles.upcomingTitle}>COMING UP</div>
+
+        {list.map((p: any, index: number) => (
+          <div className={styles.upcomingRow} key={p.id}>
+            <span>{index + 1}</span>
+            <strong>{p.name}</strong>
+            <small>{p.category}</small>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function Announcement() {
+    if (!live?.event?.announcement) return null;
+
+    return (
+      <div className={styles.ticker}>
+        <span>ANNOUNCEMENT</span>
+        <strong>{live.event.announcement}</strong>
+      </div>
+    );
+  }
+
+  function VotingBanner() {
+    if (
+      !live?.event?.voting_open ||
+      !active ||
+      !["PERFORMING", "JUDGING"].includes(active.state)
+    ) {
+      return null;
+    }
+
+    return (
+      <div className={styles.votingBanner}>
+        AUDIENCE VOTING IS OPEN
+      </div>
+    );
+  }
+
   if (!live) {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.kicker}>MINDQUEST PRESENTS</div>
+          <div className={styles.kicker}>
+            MINDQUEST PRESENTS
+          </div>
+
           <h1>FRESHERS GOT LATENT</h1>
+
           <p>{error || "Connecting to the stage..."}</p>
         </section>
       </main>
@@ -118,51 +247,96 @@ export default function DisplayPage() {
   }
 
   if (live.event?.phase === "ENDED") {
+    const ranked = [...results].sort(
+      (a: any, b: any) =>
+        Number(a.judge_rank || 999) -
+        Number(b.judge_rank || 999),
+    );
+
     return (
       <main className={styles.display}>
-        <div className={styles.kicker}>FRESHERS GOT LATENT</div>
+        <div className={styles.kicker}>
+          FRESHERS GOT LATENT
+        </div>
 
         <h1 className={styles.heading}>FINAL RESULTS</h1>
 
-        <section className={styles.leaderboard}>
-          {results.length === 0 ? (
-            <div className={styles.center}>
-              <h2>Results will appear shortly.</h2>
+        {ranked.length >= 3 && (
+          <section className={styles.podium}>
+            <div className={styles.podiumItem}>
+              <span>#2</span>
+              <strong>{ranked[1]?.name}</strong>
+              <small>
+                {Number(ranked[1]?.average).toFixed(2)}
+              </small>
             </div>
-          ) : (
-            results.slice(0, 10).map((r: any) => (
-              <div className={styles.resultRow} key={r.id}>
-                <span className={styles.rank}>#{r.judge_rank}</span>
 
-                <span className={styles.resultName}>{r.name}</span>
+            <div
+              className={`${styles.podiumItem} ${styles.first}`}
+            >
+              <span>#1</span>
+              <strong>{ranked[0]?.name}</strong>
+              <small>
+                {Number(ranked[0]?.average).toFixed(2)}
+              </small>
+            </div>
 
-                <span className={styles.resultScore}>
-                  {Number(r.average).toFixed(2)}
+            <div className={styles.podiumItem}>
+              <span>#3</span>
+              <strong>{ranked[2]?.name}</strong>
+              <small>
+                {Number(ranked[2]?.average).toFixed(2)}
+              </small>
+            </div>
+          </section>
+        )}
+
+        <section className={styles.leaderboard}>
+          {ranked.slice(0, 10).map((r: any) => (
+            <div className={styles.resultRow} key={r.id}>
+              <span className={styles.rank}>
+                #{r.judge_rank}
+              </span>
+
+              <span className={styles.resultName}>
+                {r.name}
+              </span>
+
+              <span className={styles.resultScore}>
+                {Number(r.average).toFixed(2)}
+              </span>
+
+              {r.match && (
+                <span className={styles.match}>
+                  LATENT MATCH
                 </span>
-
-                {r.match && (
-                  <span className={styles.match}>LATENT MATCH</span>
-                )}
-              </div>
-            ))
-          )}
+              )}
+            </div>
+          ))}
         </section>
 
         {live.audience && live.audience.length > 0 && (
           <section className={styles.audienceChoice}>
-            <div className={styles.kicker}>AUDIENCE CHOICE</div>
+            <div className={styles.kicker}>
+              AUDIENCE CHOICE
+            </div>
 
             {[...live.audience]
-              .sort((a: any, b: any) => b.average - a.average)
+              .sort(
+                (a: any, b: any) =>
+                  b.average - a.average,
+              )
               .slice(0, 3)
               .map((a: any, index: number) => {
                 const performer = performances.find(
-                  (p: any) => p.id === a.performance_id,
+                  (p: any) =>
+                    p.id === a.performance_id,
                 );
 
                 return (
                   <div key={a.performance_id}>
-                    #{index + 1} {performer?.name || "Performer"} ·{" "}
+                    #{index + 1}{" "}
+                    {performer?.name || "Performer"} ·{" "}
                     {Number(a.average).toFixed(2)} / 5
                   </div>
                 );
@@ -177,23 +351,69 @@ export default function DisplayPage() {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.kicker}>FRESHERS GOT LATENT</div>
+          <div className={styles.kicker}>
+            FRESHERS GOT LATENT
+          </div>
 
-          <h1>SHOW PAUSED</h1>
+          <h1>INTERMISSION</h1>
 
-          <p>We will resume shortly.</p>
+          <p>We will be right back.</p>
 
-          {live.event?.announcement && (
-            <p className={styles.announcement}>
-              {live.event.announcement}
-            </p>
-          )}
+          <Announcement />
         </section>
       </main>
     );
   }
 
-  if (!active && next) {
+  if (live.event?.phase === "DRAFT") {
+    return (
+      <main className={styles.display}>
+        <section className={styles.lineupScreen}>
+          <div className={styles.kicker}>
+            MINDQUEST PRESENTS
+          </div>
+
+          <h1 className={styles.lineupHeading}>
+            TONIGHT&apos;S LINEUP
+          </h1>
+
+          <div className={styles.lineupList}>
+            {currentLineup.map((p: any) => (
+              <div
+                className={styles.lineupRow}
+                key={p.id}
+              >
+                <span>
+                  {String(p.position).padStart(2, "0")}
+                </span>
+
+                <strong>{p.name}</strong>
+
+                <small>{p.category}</small>
+
+                {p.members?.length > 0 && (
+                  <em>
+                    + {p.members.length} team member
+                    {p.members.length > 1 ? "s" : ""}
+                  </em>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.stageSet}>
+            THE STAGE IS SET
+          </div>
+
+          <Announcement />
+        </section>
+      </main>
+    );
+  }
+
+  if (!active && ready.length > 0) {
+    const next = ready[0];
+
     return (
       <main className={styles.display}>
         <section className={styles.center}>
@@ -201,9 +421,15 @@ export default function DisplayPage() {
 
           <h1>{next.name}</h1>
 
-          <p className={styles.category}>{next.category}</p>
+          <p className={styles.category}>
+            {next.category}
+          </p>
 
-          <p>Get ready for the next act.</p>
+          <Progress />
+
+          <Upcoming />
+
+          <Announcement />
         </section>
       </main>
     );
@@ -213,21 +439,17 @@ export default function DisplayPage() {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.kicker}>MINDQUEST PRESENTS</div>
+          <div className={styles.kicker}>
+            FRESHERS GOT LATENT
+          </div>
 
-          <h1>FRESHERS GOT LATENT</h1>
+          <h1>THE NEXT ACT IS GETTING READY</h1>
 
-          <p>
-            {live.event?.phase === "DRAFT"
-              ? "THE STAGE IS SET"
-              : "The next act will begin shortly."}
-          </p>
+          <Progress />
 
-          {live.event?.announcement && (
-            <p className={styles.announcement}>
-              {live.event.announcement}
-            </p>
-          )}
+          <Upcoming />
+
+          <Announcement />
         </section>
       </main>
     );
@@ -237,21 +459,21 @@ export default function DisplayPage() {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.kicker}>NOW ON STAGE</div>
+          <div className={styles.kicker}>
+            NOW ON STAGE
+          </div>
 
           <h1>{active.name}</h1>
 
-          <p className={styles.category}>{active.category}</p>
+          <p className={styles.category}>
+            {active.category}
+          </p>
 
-          <div className={styles.position}>
-            PERFORMANCE #{active.position}
-          </div>
+          <Progress />
 
-          {next && (
-            <div className={styles.next}>
-              UP NEXT · {next.name}
-            </div>
-          )}
+          <Upcoming />
+
+          <Announcement />
         </section>
       </main>
     );
@@ -261,21 +483,29 @@ export default function DisplayPage() {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.liveBadge}>● LIVE</div>
+          <div className={styles.liveBadge}>
+            ● LIVE
+          </div>
 
           <h1>{active.name}</h1>
 
-          <p className={styles.category}>{active.category}</p>
+          <p className={styles.category}>
+            {active.category}
+          </p>
 
           {seconds !== null && (
-            <div className={styles.timer}>{clock(seconds)}</div>
-          )}
-
-          {next && (
-            <div className={styles.next}>
-              UP NEXT · {next.name}
+            <div className={styles.timer}>
+              {clock(seconds)}
             </div>
           )}
+
+          <Progress />
+
+          <Upcoming />
+
+          <VotingBanner />
+
+          <Announcement />
         </section>
       </main>
     );
@@ -285,7 +515,9 @@ export default function DisplayPage() {
     return (
       <main className={styles.display}>
         <section className={styles.center}>
-          <div className={styles.kicker}>JUDGING</div>
+          <div className={styles.kicker}>
+            JUDGING
+          </div>
 
           <h1>{active.name}</h1>
 
@@ -294,11 +526,13 @@ export default function DisplayPage() {
             <span className={styles.dots}>...</span>
           </div>
 
-          {next && (
-            <div className={styles.next}>
-              UP NEXT · {next.name}
-            </div>
-          )}
+          <Progress />
+
+          <Upcoming />
+
+          <VotingBanner />
+
+          <Announcement />
         </section>
       </main>
     );
@@ -307,7 +541,9 @@ export default function DisplayPage() {
   if (active.state === "REVEAL") {
     return (
       <main className={styles.display}>
-        <section className={`${styles.center} ${styles.reveal}`}>
+        <section
+          className={`${styles.center} ${styles.reveal}`}
+        >
           <div className={styles.kicker}>RESULT</div>
 
           <h1>{active.name}</h1>
@@ -317,44 +553,51 @@ export default function DisplayPage() {
               <div className={styles.scoreGrid}>
                 <div>
                   <span>SELF SCORE</span>
+
                   <strong>
-                    {Number(activeResult.self_score).toFixed(2)}
+                    {Number(
+                      activeResult.self_score,
+                    ).toFixed(2)}
                   </strong>
                 </div>
 
                 <div>
-                  <span>JUDGES' SCORE</span>
+                  <span>JUDGES&apos; SCORE</span>
+
                   <strong>
-                    {Number(activeResult.average).toFixed(2)}
+                    {Number(
+                      activeResult.average,
+                    ).toFixed(2)}
                   </strong>
                 </div>
               </div>
 
               {activeResult.match ? (
                 <div className={styles.bigMatch}>
-                  ✓ LATENT MATCH
+                  ★ LATENT MATCH ★
                 </div>
               ) : (
                 <div className={styles.difference}>
                   DIFFERENCE ·{" "}
-                  {Number(activeResult.difference).toFixed(2)}
+                  {Number(
+                    activeResult.difference,
+                  ).toFixed(2)}
                 </div>
               )}
             </>
           ) : (
             <p>Calculating result...</p>
           )}
+
+          <Progress />
+
+          <Upcoming />
+
+          <Announcement />
         </section>
       </main>
     );
   }
 
-  return (
-    <main className={styles.display}>
-      <section className={styles.center}>
-        <div className={styles.kicker}>FRESHERS GOT LATENT</div>
-        <h1>The next act begins shortly.</h1>
-      </section>
-    </main>
-  );
+  return null;
 }

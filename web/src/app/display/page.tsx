@@ -374,7 +374,7 @@ export default function DisplayPage() {
           </div>
 
           <h1 className={styles.lineupHeading}>
-            TONIGHT&apos;S LINEUP
+            TODAY&apos;S LINEUP
           </h1>
 
           <div className={styles.lineupList}>

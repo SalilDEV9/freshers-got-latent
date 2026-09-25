@@ -92,7 +92,7 @@ export async function eventAction(action: string, data: any, actor: Actor) {
       const rows=await tx`select id,position from fgl.performances where event_id=${e} and state in ('REGISTERED','CHECKED_IN','BACKSTAGE','READY') order by position`;
       const i=rows.findIndex((r:any)=>r.id===p.id),offset=data.direction==='up'?-1:data.direction==='down'?1:0;
       const target=rows[i+offset];if(!offset||!target)throw new Error('Cannot move further');
-      await tx`update fgl.performances set position=case when id=${p.id} then ${target.position} else ${p.position} end where id in (${p.id},${target.id})`;
+      await tx`update fgl.performances set position=case when id=${p.id} then ${target.position}::int else ${p.position}::int end where id in (${p.id},${target.id})`;
     } else if (action === "event_replace_judge") {
       if(!admin||!p||!active.includes(p.state)||!p.panel.includes(data.old)||p.panel.includes(data.new))throw new Error('Select an active panel judge and a reserve');
       validText(data.reason,500);
